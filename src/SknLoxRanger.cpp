@@ -4,8 +4,7 @@
  */
 #include "SknLoxRanger.hpp"
 
-SknLoxRanger::SknLoxRanger(int gpio_pin, unsigned int timingBudgetMS, unsigned int interMeasurementMS)  {
-  iDataReadyPin=gpio_pin;
+SknLoxRanger::SknLoxRanger(unsigned int timingBudgetMS, unsigned int interMeasurementMS)  {
   uiTimingBudget=(timingBudgetMS * 1000); // required in micros
   uiInterMeasurement=interMeasurementMS;
 
@@ -22,19 +21,9 @@ SknLoxRanger::SknLoxRanger(int gpio_pin, unsigned int timingBudgetMS, unsigned i
  * @brief Processing Loop
  * 
  */
-SknLoxRanger& SknLoxRanger::loop(bool wait) {
-    if(isDataReady()) {
-      relativeDistance(wait);   
-    }
+SknLoxRanger& SknLoxRanger::loop() {
+      relativeDistance(true);   
   return *this;
-}
-
-/**
- * @brief ISR for data ready
- * 
- */
-bool SknLoxRanger::isDataReady() {
-  return (lox.readReg(VL53L1X::RESULT__INTERRUPT_STATUS) & 0x07) ? true: false;
 }
 
 /**
@@ -44,8 +33,6 @@ bool SknLoxRanger::isDataReady() {
  */
 SknLoxRanger& SknLoxRanger::begin( ) {
   Serial.printf(" ✖  SknLoxRanger initialization starting.\n");
-
-  // lox.setTimeout(512);
 
   while (!lox.init()) {
     Serial.printf(" ✖  Failed to detect and initialize sensor!\n");
@@ -150,6 +137,7 @@ unsigned int SknLoxRanger::readValue(bool wait)
   else
   {
     distances[capacity] = value;
+    return 0;
   }
 
   Serial.printf("〽 range: %u mm  avg: %lu mm\tstatus: %s\traw status: %u\tsignal: %3.1f MCPS\tambient: %3.1f MCPS\tmove: %s\n",
@@ -161,7 +149,7 @@ unsigned int SknLoxRanger::readValue(bool wait)
                     sDat.ambient_count_rate_MCPS,
                     movementString()); 
   
-  return distances[capacity];
+  return avg;
 }
 
 /**
@@ -173,10 +161,13 @@ unsigned int SknLoxRanger::relativeDistance(bool wait) {
   
   mmPos = (long)readValue(wait);
 
+  if(mmPos==0) return uiDistanceValueMM;
+
   posValue = map(mmPos, iLimitMin, iLimitMax, 0, 100);
   
   mmPos = constrain( posValue, 0, 100);
-
+  uiDistanceValuePos = mmPos;
+  
   Serial.printf(" ✖  SknLoxRanger relativeDistance(%ld %%) accepted.\n", mmPos);
 
   return (unsigned int) mmPos;

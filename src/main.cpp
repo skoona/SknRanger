@@ -51,7 +51,7 @@ extern "C"
 
 /*
  * create the base class instance */
-SknLoxRanger lox(LOX_GPIO, 250, 1000);
+SknLoxRanger lox(250, 1000);
 
 /*
  * Arduino Setup: Initialze Homie */
@@ -67,5 +67,5 @@ void setup() {
 /*
  * Arduino Loop: Cycles Homie Nodes */
 void loop() {
-  lox.loop(false);
+  lox.loop();
 }
