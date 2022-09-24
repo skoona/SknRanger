@@ -12,13 +12,13 @@
 class SknLoxRanger {
 
 public:
-  SknLoxRanger( unsigned int timingBudgetMS =250, unsigned int interMeasurementMS = 1000 );
+  SknLoxRanger( uint8_t resetPin, unsigned int timingBudgetMS =250, unsigned int interMeasurementMS = 1000 );
 
   enum eDirection {MOVING_UP,MOVING_DOWN,STOPPED};
 
   SknLoxRanger& begin();
   SknLoxRanger& start();
-           void stop();
+  SknLoxRanger& stop();
    unsigned int relativeDistance(bool wait=false);
      eDirection movement();
     const char* movementString();
@@ -52,7 +52,7 @@ private :
   #define MAX_SAMPLES 5
       const int capacity = (MAX_SAMPLES);
   unsigned  int distances[MAX_SAMPLES + 2];
-     const char *cSknRangerID = "Ranger";     // Door Positon Label; UP, DOWN, STOPPED,...
+     const char *cSknRangerID = "Ranger";     // memory key
 
   VL53L1X::RangingData sDat, *PSDat;
   // {
@@ -62,6 +62,9 @@ private :
   //   float ambient_count_rate_MCPS;
   // };
 
+  #define RETRIES_BEFORE_RESET 8
+         SknLoxRanger& toogleShutdown(uint8_t resetPin);
+      uint8_t loxResetPin;
       VL53L1X lox;                         // Ranging Device
   Preferences prefs;                       // stored ranger limit min - max
 };

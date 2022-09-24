@@ -34,7 +34,7 @@ extern "C"
 // nodemcu esp12f  pins  -- ESP8266 Relay Module, ESP-12F Development Board AC 220V DC 12V Single relay module
   #define SDA        14
   #define SCL        12
-  #define LOX_GPIO   13    
+  #define LOX_GPIO   13    // XSHUT Pin
   #define RELAY_GPIO  5   
   #undef LED_BUILTIN
   #define LED_BUILTIN 16
@@ -51,7 +51,7 @@ extern "C"
 
 /*
  * create the base class instance */
-SknLoxRanger lox(250, 1000);
+SknLoxRanger lox(250, 500);
 
 /*
  * Arduino Setup: Initialze Homie */

@@ -4,9 +4,13 @@
  */
 #include "SknLoxRanger.hpp"
 
-SknLoxRanger::SknLoxRanger(unsigned int timingBudgetMS, unsigned int interMeasurementMS)  {
+SknLoxRanger::SknLoxRanger(uint8_t resetPin, unsigned int timingBudgetMS, unsigned int interMeasurementMS)  {
+  loxResetPin = resetPin;
   uiTimingBudget=(timingBudgetMS * 1000); // required in micros
   uiInterMeasurement=interMeasurementMS;
+
+  pinMode(resetPin, OUTPUT);
+  digitalWrite(resetPin, HIGH);  // Keep this HIGH as we need to pull it low when we reset the sensor
 
   /*
    * Initialze averaging array */
@@ -15,6 +19,15 @@ SknLoxRanger::SknLoxRanger(unsigned int timingBudgetMS, unsigned int interMeasur
   }
 
   limitsRestore();
+}
+
+SknLoxRanger& SknLoxRanger::toogleShutdown(uint8_t resetPin) {
+  digitalWrite(resetPin, LOW);
+  delay(1000);
+  digitalWrite(resetPin, HIGH);
+  delay(1000);
+  Serial.printf(" ✖  SknLoxRanger toggled shutdown pin.\n");
+  return *this;
 }
 
 /**
@@ -33,14 +46,20 @@ SknLoxRanger& SknLoxRanger::loop() {
  */
 SknLoxRanger& SknLoxRanger::begin( ) {
   Serial.printf(" ✖  SknLoxRanger initialization starting.\n");
+  int beforeRetry = 0;
 
   while (!lox.init()) {
     Serial.printf(" ✖  Failed to detect and initialize sensor!\n");
     delay(1000);
+    beforeRetry++;
+    if(beforeRetry>RETRIES_BEFORE_RESET) {
+      toogleShutdown(loxResetPin);
+      beforeRetry=0;
+    }
   }
   Serial.printf(" ✖  Exited initialize sensor!\n");
 
-  lox.setTimeout(1100);
+  lox.setTimeout(uiInterMeasurement+uiTimingBudget);
 
   if (lox.setDistanceMode(VL53L1X::Medium)) {  
     Serial.printf("〽 Medium distance mode accepted.\n");
@@ -68,9 +87,10 @@ SknLoxRanger&  SknLoxRanger::start() {
 /**
  * Stop device
 */
-void SknLoxRanger::stop() {
+SknLoxRanger& SknLoxRanger::stop() {
   lox.stopContinuous();  
   Serial.printf(" ✖  SknLoxRanger stopContinuous() accepted.\n");
+  return *this;
 }
 
 /**
@@ -167,7 +187,7 @@ unsigned int SknLoxRanger::relativeDistance(bool wait) {
   
   mmPos = constrain( posValue, 0, 100);
   uiDistanceValuePos = mmPos;
-  
+
   Serial.printf(" ✖  SknLoxRanger relativeDistance(%ld %%) accepted.\n", mmPos);
 
   return (unsigned int) mmPos;
