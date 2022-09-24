@@ -22,10 +22,7 @@ public:
    unsigned int relativeDistance(bool wait=false);
      eDirection movement();
     const char* movementString();
-  SknLoxRanger& loop(bool wait=true) ;
-
-           bool isDataReady();
-           void setDataReady ();
+  SknLoxRanger& loop(bool wait=false) ;
 
 protected:
 /*
@@ -38,6 +35,7 @@ protected:
           bool limitsSave();
           bool limitsRestore();
   unsigned int readValue(bool wait=false);
+           bool isDataReady();
            int iLimitMin = MM_MIN;    // logical UP,   or closest to sensor
            int iLimitMax = MM_MAX;    // logical DOWN, or farest from sensor
   
@@ -54,7 +52,6 @@ private :
   unsigned  int distances[MAX_SAMPLES + 2];
   unsigned long time_now = millis();
      const char *cSknRangerID = "Ranger";     // Door Positon Label; UP, DOWN, STOPPED,...
-  volatile bool bDataReady;
 
   VL53L1X::RangingData sDat, *PSDat;
   // {

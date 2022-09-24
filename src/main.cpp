@@ -54,34 +54,18 @@ extern "C"
 SknLoxRanger lox(LOX_GPIO, 250, 1000);
 
 /*
- * link inerrupt handler to this class */
-SknLoxRanger *instances[] = { &lox, NULL};
-
-/*
- * interrupt handler for ranging */
-void IRAM_ATTR loxDataReadyHandler() {
-  if ( instances[0] != NULL ) {
-    instances[0]->setDataReady ();
-  }
-}
-
-/*
  * Arduino Setup: Initialze Homie */
 void setup() {
   delay(100);
   Serial.begin(115200);
   delay(100);
   
-  // FALLING, RISING, CHANGE
-  pinMode( LOX_GPIO, INPUT_PULLUP);  
-  attachInterrupt(digitalPinToInterrupt(LOX_GPIO), loxDataReadyHandler, FALLING);
-
   Wire.begin(SDA, SCL);
-  instances[0]->begin().start();
+  lox.begin().start();
 }
 
 /*
  * Arduino Loop: Cycles Homie Nodes */
 void loop() {
-  instances[0]->loop(true);
+  lox.loop(false);
 }

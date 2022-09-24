@@ -4,8 +4,6 @@
  */
 #include "SknLoxRanger.hpp"
 
-extern void IRAM_ATTR loxDataReadyHandler();
-
 SknLoxRanger::SknLoxRanger(int gpio_pin, unsigned int timingBudgetMS, unsigned int interMeasurementMS)  {
   iDataReadyPin=gpio_pin;
   uiTimingBudget=(timingBudgetMS * 1000); // required in micros
@@ -25,9 +23,8 @@ SknLoxRanger::SknLoxRanger(int gpio_pin, unsigned int timingBudgetMS, unsigned i
  * 
  */
 SknLoxRanger& SknLoxRanger::loop(bool wait) {
-    if(bDataReady) {
+    if(isDataReady()) {
       relativeDistance(wait);   
-      // bDataReady=false;
     }
   return *this;
 }
@@ -36,15 +33,8 @@ SknLoxRanger& SknLoxRanger::loop(bool wait) {
  * @brief ISR for data ready
  * 
  */
-void SknLoxRanger::setDataReady () {
-  bDataReady = true; 
-}
-
 bool SknLoxRanger::isDataReady() {
-
   return (lox.readReg(VL53L1X::RESULT__INTERRUPT_STATUS) & 0x07) ? true: false;
-
-  // return bDataReady;
 }
 
 /**
