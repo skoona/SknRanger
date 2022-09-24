@@ -12,7 +12,7 @@
 class SknLoxRanger {
 
 public:
-  SknLoxRanger( uint8_t resetPin, unsigned int timingBudgetMS =250, unsigned int interMeasurementMS = 1000 );
+  SknLoxRanger( unsigned int timingBudgetMS =250, unsigned int interMeasurementMS = 1000 );
 
   enum eDirection {MOVING_UP,MOVING_DOWN,STOPPED};
 
@@ -62,9 +62,6 @@ private :
   //   float ambient_count_rate_MCPS;
   // };
 
-  #define RETRIES_BEFORE_RESET 8
-         SknLoxRanger& toogleShutdown(uint8_t resetPin);
-      uint8_t loxResetPin;
       VL53L1X lox;                         // Ranging Device
   Preferences prefs;                       // stored ranger limit min - max
 };

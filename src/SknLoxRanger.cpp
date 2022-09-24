@@ -4,13 +4,9 @@
  */
 #include "SknLoxRanger.hpp"
 
-SknLoxRanger::SknLoxRanger(uint8_t resetPin, unsigned int timingBudgetMS, unsigned int interMeasurementMS)  {
-  loxResetPin = resetPin;
+SknLoxRanger::SknLoxRanger(unsigned int timingBudgetMS, unsigned int interMeasurementMS)  {
   uiTimingBudget=(timingBudgetMS * 1000); // required in micros
   uiInterMeasurement=interMeasurementMS;
-
-  pinMode(resetPin, OUTPUT);
-  digitalWrite(resetPin, HIGH);  // Keep this HIGH as we need to pull it low when we reset the sensor
 
   /*
    * Initialze averaging array */
@@ -19,15 +15,6 @@ SknLoxRanger::SknLoxRanger(uint8_t resetPin, unsigned int timingBudgetMS, unsign
   }
 
   limitsRestore();
-}
-
-SknLoxRanger& SknLoxRanger::toogleShutdown(uint8_t resetPin) {
-  digitalWrite(resetPin, LOW);
-  delay(1000);
-  digitalWrite(resetPin, HIGH);
-  delay(1000);
-  Serial.printf(" ✖  SknLoxRanger toggled shutdown pin.\n");
-  return *this;
 }
 
 /**
@@ -46,16 +33,10 @@ SknLoxRanger& SknLoxRanger::loop() {
  */
 SknLoxRanger& SknLoxRanger::begin( ) {
   Serial.printf(" ✖  SknLoxRanger initialization starting.\n");
-  int beforeRetry = 0;
 
   while (!lox.init()) {
     Serial.printf(" ✖  Failed to detect and initialize sensor!\n");
     delay(1000);
-    beforeRetry++;
-    if(beforeRetry>RETRIES_BEFORE_RESET) {
-      toogleShutdown(loxResetPin);
-      beforeRetry=0;
-    }
   }
   Serial.printf(" ✖  Exited initialize sensor!\n");
 
