@@ -91,10 +91,18 @@ void onHomieEvent(const HomieEvent& event) {
     case HomieEventType::MQTT_DISCONNECTED:
       Serial << "MQTT disconnected, reason: " << (int8_t)event.mqttReason << endl;
       gbEnableDoorOperations=false;
+      nodePos.stop();
       break;
     case HomieEventType::SENDING_STATISTICS:
       Serial << "Sending statistics" << endl;
       nodePos.broadcastStatus();
+      if(!nodePos.isAutoLearn()) {   // if not autolearning, cycle ranging with stats
+        if(nodePos.isActive()) {
+          nodePos.stop();
+        } else {
+          nodePos.start();
+        }
+      }
       break;
   }
 }

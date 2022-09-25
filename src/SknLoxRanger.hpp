@@ -14,12 +14,14 @@ class SknLoxRanger  : public HomieNode {
 
 public:
   SknLoxRanger( const char *id, const char *name, const char *cType, unsigned int timingBudgetUS = 250000, unsigned int interMeasurementMS = 1000 );
-
-          void broadcastStatus();
+           bool isActive() { return bActive && bVL53L1xInitialized; }
+           bool isAutoLearn() { return (bAutoLearnUp || bAutoLearnDown) && bVL53L1xInitialized; }
+           bool isInitialized() { return bVL53L1xInitialized; }
+           void broadcastStatus();
     const char* movementString();
   SknLoxRanger& start();
   SknLoxRanger& stop();
-
+  
 protected:
   virtual void setup() override;
   virtual void onReadyToOperate() override;
@@ -29,6 +31,7 @@ protected:
 
   enum eDirection {MOVING_UP,MOVING_DOWN,STOPPED,LEARNING_UP,LEARNING_DOWN,REBOOTING, EXIT};
   SknLoxRanger& begin();
+           void manageAutoLearn(long mmPos);
    unsigned int relativeDistance(bool wait=false);
      eDirection movement();
   SknLoxRanger& vlxLoop();
@@ -43,7 +46,7 @@ protected:
 #define MM_MIN 330
 #define MM_MAX 2528
           bool limitsSave();
-          bool limitsRestore();
+          bool limitsRestore();          
   unsigned int readValue(bool wait=true);
            int iLimitMin = MM_MIN;    // logical UP,   or closest to sensor
            int iLimitMax = MM_MAX;    // logical DOWN, or farest from sensor
@@ -70,13 +73,15 @@ private :
       const int capacity = (MAX_SAMPLES);
   unsigned  int distances[MAX_SAMPLES + 2];
   unsigned long readings = 0;
+  unsigned long cycleCount = 0;
   
   #define AUTO_LEARN_READINGS 10
   unsigned long autoLearnUpReadings = 0;
   unsigned long autoLearnDownReadings = 0;
            bool bAutoLearnUp;
            bool bAutoLearnDown;
-
+           bool bActive = false;
+           bool bVL53L1xInitialized;
 
   VL53L1X::RangingData sDat, *PSDat;
   // {
