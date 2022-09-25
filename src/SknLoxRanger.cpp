@@ -228,6 +228,8 @@ unsigned int SknLoxRanger::relativeDistance(bool wait) {
     mmPos = (long)readValue(wait);
   }
 
+  cCurrentState=movementString();
+
   /*
    * determine the new ranges and save to eeprom */
   manageAutoLearn(mmPos);
@@ -238,7 +240,10 @@ unsigned int SknLoxRanger::relativeDistance(bool wait) {
     posValue = map(mmPos, MM_MIN, MM_MAX, 0, 100);
   } else {
     posValue = map(mmPos, iLimitMin, iLimitMax, 0, 100);
-    if(readings>cycleCount) { stop(); } 
+    if(readings>cycleCount) {
+      stop(); 
+      broadcastStatus();
+    } 
   }
 
   mmPos = constrain( posValue, 0, 100);
