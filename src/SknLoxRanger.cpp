@@ -92,7 +92,14 @@ SknLoxRanger::eDirection SknLoxRanger::movement() {
   if (distances[0]  >  distances[capacity]) { eDir=MOVING_UP; }
   if (distances[0]  <  distances[capacity]) { eDir=MOVING_DOWN; }
   if (distances[0]  == distances[capacity]) { eDir=STOPPED; }
-
+  
+  if(bAutoLearnUp) {
+    cCurrentMode=cDir[LEARNING_UP];
+    setProperty(cSknModeID).send(cCurrentMode);
+  } else if(bAutoLearnDown) {
+    cCurrentMode=cDir[LEARNING_DOWN];
+    setProperty(cSknModeID).send(cCurrentMode);
+  }
   return eDir;
 }
 
@@ -164,16 +171,48 @@ unsigned int SknLoxRanger::relativeDistance(bool wait) {
   long posValue;
   long mmPos;
   
+  /*
+   * get valid value */
   mmPos = (long)readValue(wait);
-
   while(mmPos==0) {        // get a vaild value before proceeding
     Serial.printf(" ✖  SknLoxRanger relativeDistance(0 mm) NOT accepted.\n");
     mmPos = (long)readValue(wait);
   }
 
-  posValue = map(mmPos, iLimitMin, iLimitMax, 0, 100);
-  
+  /*
+   * determine the new ranges and save to eeprom */
+  readings++;
+  if(bAutoLearnUp) {
+    iLimitMin = mmPos;
+    if(readings>=autoLearnUpReadings) {
+      bAutoLearnUp=false;
+      limitsSave();
+      cCurrentMode=cMode[0];
+      Serial.printf(" ✖  SknLoxRanger Auto Learn Up(%d mm) accepted.\n", iLimitMin);
+    }
+  } else if (bAutoLearnDown) {
+    iLimitMax = mmPos;
+    if(readings>=autoLearnDownReadings) {
+      bAutoLearnDown=false;
+      limitsSave();
+      cCurrentMode=cMode[0];
+      setProperty(cSknModeID).send(cCurrentMode);
+      Serial.printf(" ✖  SknLoxRanger Auto Learn Down(%d mm) accepted.\n", iLimitMax);
+    }
+  }
+
+  /*
+   * use fixed ranges while determining new range */
+  if(bAutoLearnUp || bAutoLearnDown) {
+    posValue = map(mmPos, MM_MIN, MM_MAX, 0, 100);
+  } else {
+    posValue = map(mmPos, iLimitMin, iLimitMax, 0, 100);
+  }
+
   mmPos = constrain( posValue, 0, 100);
+  if(mmPos!=uiDistanceValuePos) {
+    setProperty(cSknPosID).send(String(uiDistanceValuePos));
+  }
   uiDistanceValuePos = mmPos;
 
   Serial.printf(" ✖  SknLoxRanger relativeDistance(%ld %%) accepted.\n", mmPos);
@@ -222,6 +261,7 @@ bool SknLoxRanger::handleInput(const HomieRange& range, const String& property, 
     // Node Services
   if(property.equalsIgnoreCase(cSknModeID)) {
     if(value.equalsIgnoreCase("reboot")) {
+      stop();
       Homie.getLogger() << cIndent << "〽 RESTARTING OR REBOOTING MACHINE ";
       cCurrentMode =  "Rebooting in 5 seconds";
       ESP.restart();
@@ -229,17 +269,21 @@ bool SknLoxRanger::handleInput(const HomieRange& range, const String& property, 
     } else if (value.equalsIgnoreCase("auto_learn_up")) {
       Homie.getLogger() << cIndent << "〽 Auto Learn Up ";
       cCurrentMode =  "Auto Learn Up";
+      bAutoLearnUp = true;
+      autoLearnUpReadings = readings + AUTO_LEARN_READINGS;
       // door.cmd_auto_learn_up();
       rc = true;
     } else if (value.equalsIgnoreCase("auto_learn_down")) {
       Homie.getLogger() << cIndent << "〽 Auto Learn Down ";
       cCurrentMode =  "Auto Learn Down";
+      bAutoLearnDown = true;
+      autoLearnDownReadings = readings + AUTO_LEARN_READINGS;
       // door.cmd_auto_learn_down();
       rc = true;
     }     
     
     if(rc) {
-      updateDoorInfo();
+      broadcastStatus();
     }
   }
 
@@ -249,10 +293,10 @@ bool SknLoxRanger::handleInput(const HomieRange& range, const String& property, 
 /**
  *
  */
-void SknLoxRanger::updateDoorInfo() {
+void SknLoxRanger::broadcastStatus() {
   if(gbEnableDoorOperations) {
-    setProperty(cSknRangerID).send(String(uiDistanceValuePos));
-    setProperty(cSknPosID).send(String(cCurrentState));
+    setProperty(cSknPosID).send(String(uiDistanceValuePos));
+    setProperty(cSknState).send(String(cCurrentState));
     setProperty(cSknModeID).send(cCurrentMode);
   }
 }
@@ -273,7 +317,7 @@ void SknLoxRanger::onReadyToOperate() {
       << ") Services Mode: "
       << cCurrentMode
       << endl;
-  updateDoorInfo();
+  broadcastStatus();
 }
 
 /**
@@ -284,23 +328,23 @@ void SknLoxRanger::setup() {
    advertise(cSknState)
     .setName("State")
     .setDatatype("enum")
-    .setFormat("STOPPED,MOVING_UP,UP,MOVING_DOWN,DOWN,MOVING_POS,LEARN_UP,LEARN_DOWN")
+    .setFormat("MOVING_UP,MOVING_DOWN,STOPPED,LEARN_UP,LEARN_DOWN,REBOOTING")
     .setRetained(true);
 
   advertise(cSknPosID)
     .setName("Position")
-    .setDatatype("percentage")
+    .setDatatype("percent")
     .setFormat("0:100")
     .setUnit("%")
     .setRetained(true);
-    // Commands: digits:0-100, UP, DOWN, STOP
+    // Commands: digits:0-100,
 
   snprintf(cBuffer, sizeof(cBuffer), "Auto Learn Range, Up %d mm, Down %d mm", iLimitMin, iLimitMax);
   cCurrentMode = cBuffer;
   advertise(cSknModeID)
     .setName("Services")
     .setDatatype("string")
-    .setFormat("AUTO_LEARN_UP,AUTO_LEARN_DOWN,REBOOT")
+    .setFormat("READY,AUTO_LEARN_UP,AUTO_LEARN_DOWN,REBOOT")
     .settable();
     // Commands: auto_learn_up, auto_learn_down, reboot
 

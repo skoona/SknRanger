@@ -15,7 +15,10 @@ class SknLoxRanger  : public HomieNode {
 public:
   SknLoxRanger( const char *id, const char *name, const char *cType, unsigned int timingBudgetUS = 250000, unsigned int interMeasurementMS = 1000 );
 
-          void updateDoorInfo();
+          void broadcastStatus();
+    const char* movementString();
+  SknLoxRanger& start();
+  SknLoxRanger& stop();
 
 protected:
   virtual void setup() override;
@@ -24,13 +27,10 @@ protected:
   virtual void loop() override;
 
 
-  enum eDirection {MOVING_UP,MOVING_DOWN,STOPPED};
+  enum eDirection {MOVING_UP,MOVING_DOWN,STOPPED,LEARNING_UP,LEARNING_DOWN,REBOOTING, EXIT};
   SknLoxRanger& begin();
-  SknLoxRanger& start();
-  SknLoxRanger& stop();
    unsigned int relativeDistance(bool wait=false);
      eDirection movement();
-    const char* movementString();
   SknLoxRanger& vlxLoop();
    unsigned int currentMM() { return uiDistanceValueMM; };  
    unsigned int currentPos() { return uiDistanceValuePos; };  
@@ -63,13 +63,20 @@ private :
   const char *cSknRangerID  = "Ranger";   // memory key
   const char *cCurrentState = "DOWN";     // current door state/label
   const char *cCurrentMode  = "Ready";    // current door state/label
-  const char *cDir[3]       = {"MOVING_UP","MOVING_DOWN","STOPPED"};
-  const char *cMode[3]      = {"READY","OFFLINE","REBOOTING"};
+  const char *cDir[6]       = {"MOVING_UP","MOVING_DOWN","STOPPED","LEARNING_UP","LEARNING_DOWN","REBOOTING"};
+  const char *cMode[4]      = {"READY","AUTO_LEARN_UP","AUTO_LEARN_DOWN","REBOOT"};
 
   #define MAX_SAMPLES 5
       const int capacity = (MAX_SAMPLES);
   unsigned  int distances[MAX_SAMPLES + 2];
-            
+  unsigned long readings = 0;
+  
+  #define AUTO_LEARN_READINGS 10
+  unsigned long autoLearnUpReadings = 0;
+  unsigned long autoLearnDownReadings = 0;
+           bool bAutoLearnUp;
+           bool bAutoLearnDown;
+
 
   VL53L1X::RangingData sDat, *PSDat;
   // {

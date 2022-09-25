@@ -47,6 +47,13 @@ extern "C"
   #define RELAY_GPIO 12    // D6
   #undef LED_BUILTIN
   #define LED_BUILTIN 4
+#elif defined(ARDUINO_ESP8266_ESP01)
+// esp01 1m version
+  #define SDA  1
+  #define SCL  3
+  #define ATM_PLAYER_DISABLE_TONE   // disable some Automaton Ardunio issues (noTone, Tone, AnalogWrite)
+  #undef LED_BUILTIN
+  #define LED_BUILTIN 3
 #endif
 
 
@@ -79,6 +86,7 @@ void onHomieEvent(const HomieEvent& event) {
     case HomieEventType::MQTT_READY:
       Serial << "MQTT connected" << endl;
       gbEnableDoorOperations=true;
+      nodePos.start();
       break;
     case HomieEventType::MQTT_DISCONNECTED:
       Serial << "MQTT disconnected, reason: " << (int8_t)event.mqttReason << endl;
@@ -86,7 +94,7 @@ void onHomieEvent(const HomieEvent& event) {
       break;
     case HomieEventType::SENDING_STATISTICS:
       Serial << "Sending statistics" << endl;
-      nodePos.updateDoorInfo();
+      nodePos.broadcastStatus();
       break;
   }
 }
