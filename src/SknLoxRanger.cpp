@@ -139,7 +139,7 @@ void SknLoxRanger::manageAutoLearn(long mmPos) {
       cCurrentMode = cBuffer;
       cCurrentState=cMode[0];
       setProperty(cSknModeID).send(cCurrentMode);
-      setProperty(cSknState).send(String(cCurrentState));
+      setProperty(cSknState).send(cCurrentState);
       Serial.printf(" ✖  SknLoxRanger Auto Learn Up(%d mm) accepted.\n", iLimitMin);
     }
   } else if (bAutoLearnDown) {
@@ -152,7 +152,7 @@ void SknLoxRanger::manageAutoLearn(long mmPos) {
       cCurrentMode = cBuffer;
       cCurrentState=cMode[0];
       setProperty(cSknModeID).send(cCurrentMode);
-      setProperty(cSknState).send(String(cCurrentState));
+      setProperty(cSknState).send(cCurrentState);
       Serial.printf(" ✖  SknLoxRanger Auto Learn Down(%d mm) accepted.\n", iLimitMax);
     }
   }
@@ -200,7 +200,8 @@ unsigned int SknLoxRanger::readValue(bool wait)
     avg = 0;
   }
 
-  Serial.printf(" 〽 range: %u mm  avg: %lu mm\tstatus: %s\traw status: %u\tsignal: %3.1f MCPS\tambient: %3.1f MCPS\tmove: %s\n",
+  Serial.printf(" 〽 [%6.0lu] range: %u mm  avg: %lu mm\tstatus: %s\traw status: %u\tsignal: %3.1f MCPS\tambient: %3.1f MCPS\tmove: %s\n",
+                    readings,
                     value,
                     avg,
                     lox.rangeStatusToString(sDat.range_status),
@@ -327,7 +328,7 @@ bool SknLoxRanger::handleInput(const HomieRange& range, const String& property, 
 void SknLoxRanger::broadcastStatus() {
   if(gbEnableDoorOperations) {
     setProperty(cSknPosID).send(String(uiDistanceValuePos));
-    setProperty(cSknState).send(String(cCurrentState));
+    setProperty(cSknState).send(cCurrentState);
     setProperty(cSknModeID).send(cCurrentMode);
   }
 }
