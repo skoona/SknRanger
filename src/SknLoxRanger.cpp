@@ -60,6 +60,7 @@ SknLoxRanger& SknLoxRanger::begin( ) {
   Serial.printf(" ✖  SknLoxRanger initialization Complete.\n");
   
   bVL53L1xInitialized=true;
+  cCurrentState=cMode[0];
 
   return(*this);
 }
@@ -89,6 +90,7 @@ SknLoxRanger& SknLoxRanger::stop() {
     lox.stopContinuous();  
     bActive=false;
     Serial.printf(" ✖  SknLoxRanger stopContinuous() accepted.\n");
+    broadcastStatus();
   }
   return *this;
 }
@@ -108,10 +110,14 @@ SknLoxRanger::eDirection SknLoxRanger::movement() {
   
   if(bAutoLearnUp) {
     cCurrentMode=cDir[LEARNING_UP];
+    cCurrentState=cDir[LEARNING_UP];
     setProperty(cSknModeID).send(cCurrentMode);
+    setProperty(cSknState).send(cCurrentState);
   } else if(bAutoLearnDown) {
     cCurrentMode=cDir[LEARNING_DOWN];
+    cCurrentState=cDir[LEARNING_DOWN];
     setProperty(cSknModeID).send(cCurrentMode);
+    setProperty(cSknState).send(cCurrentState);
   }
   return eDir;
 }
@@ -133,7 +139,6 @@ void SknLoxRanger::manageAutoLearn(long mmPos) {
     if(readings>=autoLearnUpReadings) {
       bAutoLearnUp=false;
       limitsSave();
-      cCurrentState=cMode[0];
       stop();
       snprintf(cBuffer, sizeof(cBuffer), "Auto Learn Range, Up %d mm, Down %d mm", iLimitMin, iLimitMax);
       cCurrentMode = cBuffer;
