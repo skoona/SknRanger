@@ -4,8 +4,9 @@
  */
 #include "SknLoxRanger.hpp"
 
-SknLoxRanger::SknLoxRanger(unsigned int timingBudgetMS, unsigned int interMeasurementMS)  {
-  uiTimingBudget=(timingBudgetMS * 1000); // required in micros
+SknLoxRanger::SknLoxRanger(unsigned int timingBudgetUS, unsigned int interMeasurementMS)  {
+  uiTimingBudget=timingBudgetUS; // required in micros
+  if(timingBudgetUS<1000) {uiTimingBudget=timingBudgetUS*1000; }
   uiInterMeasurement=interMeasurementMS;
 
   /*
@@ -40,7 +41,7 @@ SknLoxRanger& SknLoxRanger::begin( ) {
   }
   Serial.printf(" ✖  Exited initialize sensor!\n");
 
-  lox.setTimeout(uiInterMeasurement+uiTimingBudget);
+  lox.setTimeout(uiInterMeasurement+(uiTimingBudget/1000));
 
   if (lox.setDistanceMode(VL53L1X::Medium)) {  
     Serial.printf("〽 Medium distance mode accepted.\n");
@@ -102,10 +103,9 @@ const char* SknLoxRanger::movementString() {
  * @brief read value when available ready and return average value.
  * 
  * - array was initialized in class init.
- * - gpio is active LOW
  * - affect uiDistanceValueMM if valid, return avgerage
  * - copied result struct if valid
- * - return raw value if invalid
+ * - return 0 value if invalid
 */
 unsigned int SknLoxRanger::readValue(bool wait)
 {
@@ -113,12 +113,11 @@ unsigned int SknLoxRanger::readValue(bool wait)
   unsigned long avg = 0;
   unsigned int value = 0;
 
-  // value = (unsigned int)lox.readRangeContinuousMillimeters(wait);
-  value = (unsigned int)lox.read(wait);
+  value = (unsigned int)lox.readRangeContinuousMillimeters(wait);
   
   if (lox.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
 
-  if (lox.ranging_data.range_status == 0)
+  if (lox.ranging_data.range_status == VL53L1X::RangeValid)
   {
     sDat.range_mm = lox.ranging_data.range_mm;
     sDat.range_status = lox.ranging_data.range_status;
@@ -138,7 +137,7 @@ unsigned int SknLoxRanger::readValue(bool wait)
   else
   {
     distances[capacity] = value;
-    return 0;
+    avg = 0;
   }
 
   Serial.printf("〽 range: %u mm  avg: %lu mm\tstatus: %s\traw status: %u\tsignal: %3.1f MCPS\tambient: %3.1f MCPS\tmove: %s\n",
@@ -162,7 +161,10 @@ unsigned int SknLoxRanger::relativeDistance(bool wait) {
   
   mmPos = (long)readValue(wait);
 
-  if(mmPos==0) return uiDistanceValueMM;
+  while(mmPos==0) {        // get a vaild value before proceeding
+    Serial.printf(" ✖  SknLoxRanger relativeDistance(0 mm) NOT accepted.\n");
+    mmPos = (long)readValue(wait);
+  }
 
   posValue = map(mmPos, iLimitMin, iLimitMax, 0, 100);
   

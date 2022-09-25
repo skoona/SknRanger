@@ -12,7 +12,7 @@
 class SknLoxRanger {
 
 public:
-  SknLoxRanger( unsigned int timingBudgetMS =250, unsigned int interMeasurementMS = 1000 );
+  SknLoxRanger( unsigned int timingBudgetUS =250000, unsigned int interMeasurementMS = 1000 );
 
   enum eDirection {MOVING_UP,MOVING_DOWN,STOPPED};
 

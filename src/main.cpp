@@ -50,8 +50,8 @@ extern "C"
 #endif
 
 /*
- * create the base class instance */
-SknLoxRanger lox(250, 500);
+ * create the base class instance micros, milli */
+SknLoxRanger lox(250000, 500);
 
 /*
  * Arduino Setup: Initialze Homie */
