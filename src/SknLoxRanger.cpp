@@ -4,7 +4,12 @@
  */
 #include "SknLoxRanger.hpp"
 
-SknLoxRanger::SknLoxRanger(unsigned int timingBudgetUS, unsigned int interMeasurementMS)  {
+extern volatile bool gbEnableDoorOperations;
+
+
+SknLoxRanger::SknLoxRanger( const char *id, const char *name, const char *cType, unsigned int timingBudgetUS, unsigned int interMeasurementMS )  
+  : HomieNode(id, name, cType)
+  {
   uiTimingBudget=timingBudgetUS; // required in micros
   if(timingBudgetUS<1000) {uiTimingBudget=timingBudgetUS*1000; }
   uiInterMeasurement=interMeasurementMS;
@@ -22,7 +27,7 @@ SknLoxRanger::SknLoxRanger(unsigned int timingBudgetUS, unsigned int interMeasur
  * @brief Processing Loop
  * 
  */
-SknLoxRanger& SknLoxRanger::loop() {
+SknLoxRanger& SknLoxRanger::vlxLoop() {
       relativeDistance(true);   
   return *this;
 }
@@ -204,4 +209,113 @@ bool SknLoxRanger::limitsRestore() {
 
   Serial.printf("〽  SknLoxRanger::limitsRestore(%s) \tmin: %d \tmax: %d\n", (rc ? "True": "False"), iLimitMin, iLimitMax);
   return rc;
+}
+
+/**
+ * Handles the received MQTT messages from Homie.
+ *
+ */
+bool SknLoxRanger::handleInput(const HomieRange& range, const String& property, const String& value) {
+  bool rc = false;
+  Homie.getLogger() << cIndent << "〽 handleInput -> property '" << property << "' value=" << value << endl;
+
+    // Node Services
+  if(property.equalsIgnoreCase(cSknModeID)) {
+    if(value.equalsIgnoreCase("reboot")) {
+      Homie.getLogger() << cIndent << "〽 RESTARTING OR REBOOTING MACHINE ";
+      cCurrentMode =  "Rebooting in 5 seconds";
+      ESP.restart();
+      rc = true;
+    } else if (value.equalsIgnoreCase("auto_learn_up")) {
+      Homie.getLogger() << cIndent << "〽 Auto Learn Up ";
+      cCurrentMode =  "Auto Learn Up";
+      // door.cmd_auto_learn_up();
+      rc = true;
+    } else if (value.equalsIgnoreCase("auto_learn_down")) {
+      Homie.getLogger() << cIndent << "〽 Auto Learn Down ";
+      cCurrentMode =  "Auto Learn Down";
+      // door.cmd_auto_learn_down();
+      rc = true;
+    }     
+    
+    if(rc) {
+      updateDoorInfo();
+    }
+  }
+
+  return rc;
+}
+
+/**
+ *
+ */
+void SknLoxRanger::updateDoorInfo() {
+  if(gbEnableDoorOperations) {
+    setProperty(cSknRangerID).send(String(uiDistanceValuePos));
+    setProperty(cSknPosID).send(String(cCurrentState));
+    setProperty(cSknModeID).send(cCurrentMode);
+  }
+}
+
+/**
+ *
+ */
+void SknLoxRanger::onReadyToOperate() {
+  begin().start();
+
+  Homie.getLogger()
+      << "〽 "
+      << "Node: " << getName()
+      << " Ready to operate: " 
+      << cCurrentState
+      << "("
+      << uiDistanceValuePos
+      << ") Services Mode: "
+      << cCurrentMode
+      << endl;
+  updateDoorInfo();
+}
+
+/**
+ *
+ */
+void SknLoxRanger::setup() {
+
+   advertise(cSknState)
+    .setName("State")
+    .setDatatype("enum")
+    .setFormat("STOPPED,MOVING_UP,UP,MOVING_DOWN,DOWN,MOVING_POS,LEARN_UP,LEARN_DOWN")
+    .setRetained(true);
+
+  advertise(cSknPosID)
+    .setName("Position")
+    .setDatatype("percentage")
+    .setFormat("0:100")
+    .setUnit("%")
+    .setRetained(true);
+    // Commands: digits:0-100, UP, DOWN, STOP
+
+  snprintf(cBuffer, sizeof(cBuffer), "Auto Learn Range, Up %d mm, Down %d mm", iLimitMin, iLimitMax);
+  cCurrentMode = cBuffer;
+  advertise(cSknModeID)
+    .setName("Services")
+    .setDatatype("string")
+    .setFormat("AUTO_LEARN_UP,AUTO_LEARN_DOWN,REBOOT")
+    .settable();
+    // Commands: auto_learn_up, auto_learn_down, reboot
+
+  Homie.getLogger()
+      << "〽 "
+      << "Node: " << getName()
+      << " SknGarageDoor::setup() "
+      << endl;
+}
+
+/**
+ *
+ */
+void SknLoxRanger::loop() {
+  if(gbEnableDoorOperations) {
+    vlxLoop();
+  }
 }

@@ -5,29 +5,36 @@
 
 #pragma once
 
-#include <Arduino.h>
+#include <Homie.hpp>
+#include <Wire.h>
 #include <VL53L1X.h>
 #include <Preferences.h>
 
-class SknLoxRanger {
+class SknLoxRanger  : public HomieNode {
 
 public:
-  SknLoxRanger( unsigned int timingBudgetUS =250000, unsigned int interMeasurementMS = 1000 );
+  SknLoxRanger( const char *id, const char *name, const char *cType, unsigned int timingBudgetUS = 250000, unsigned int interMeasurementMS = 1000 );
+
+          void updateDoorInfo();
+
+protected:
+  virtual void setup() override;
+  virtual void onReadyToOperate() override;
+  virtual bool handleInput(const HomieRange& range, const String& property, const String& value);
+  virtual void loop() override;
+
 
   enum eDirection {MOVING_UP,MOVING_DOWN,STOPPED};
-
   SknLoxRanger& begin();
   SknLoxRanger& start();
   SknLoxRanger& stop();
    unsigned int relativeDistance(bool wait=false);
      eDirection movement();
     const char* movementString();
-  SknLoxRanger& loop();
+  SknLoxRanger& vlxLoop();
    unsigned int currentMM() { return uiDistanceValueMM; };  
    unsigned int currentPos() { return uiDistanceValuePos; };  
 
-
-protected:
 /*
  * Door travel: 86.5" or 2198 mm
  * Mount point: 13"   or  330 mm
@@ -48,11 +55,21 @@ protected:
 
 
 private :   
-  const char *cDir[3] = {"MOVING_UP","MOVING_DOWN","STOPPED"};
+
+      VL53L1X lox;                        // Ranging Device
+  Preferences prefs;                      // stored ranger limit min - max
+
+  char cBuffer[128];
+  const char *cSknRangerID  = "Ranger";   // memory key
+  const char *cCurrentState = "DOWN";     // current door state/label
+  const char *cCurrentMode  = "Ready";    // current door state/label
+  const char *cDir[3]       = {"MOVING_UP","MOVING_DOWN","STOPPED"};
+  const char *cMode[3]      = {"READY","OFFLINE","REBOOTING"};
+
   #define MAX_SAMPLES 5
       const int capacity = (MAX_SAMPLES);
   unsigned  int distances[MAX_SAMPLES + 2];
-     const char *cSknRangerID = "Ranger";     // memory key
+            
 
   VL53L1X::RangingData sDat, *PSDat;
   // {
@@ -62,6 +79,11 @@ private :
   //   float ambient_count_rate_MCPS;
   // };
 
-      VL53L1X lox;                         // Ranging Device
-  Preferences prefs;                       // stored ranger limit min - max
+
+  const char *cCaption   = "• Garage Door Automaton Module:";
+  const char *cIndent    = " ✖  ";
+  const char *cSknState  = "State";         // Direction name; UP, DOWN, STOPPED,...
+  const char *cSknPosID  = "Position";      // Range 0 to 100;
+  const char *cSknModeID = "Service";       // service commander to force reboot of node
+
 };

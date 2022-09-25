@@ -49,23 +49,85 @@ extern "C"
   #define LED_BUILTIN 4
 #endif
 
+
+#define SKN_MOD_NAME "Garage Door Position Monitor"
+#define SKN_MOD_VERSION "1.0.1"
+#define SKN_MOD_BRAND "SknSensors"
+
+#define SKN_TITLE "Garage Door Position"
+#define SKN_TYPE "Rollershutter"
+#define SKN_ID "SknRanger"
+
+#define LOX_TIMING_BUDGET_US    250000        // = 250 ms
+#define LOX_INTERMEASUREMENT_MS    500        // = 500 ms
+
+ /* *
+  *
+  * guard-flag to prevent sending properties when mqtt is offline
+  * 
+*/
+volatile bool gbEnableDoorOperations=false;
+
+/* 
+ * Homie Nodes */
+SknLoxRanger nodePos(SKN_ID, SKN_TITLE, SKN_TYPE, LOX_TIMING_BUDGET_US, LOX_INTERMEASUREMENT_MS); // communication interface
+
+/**
+ * look for events that block sending property info */
+void onHomieEvent(const HomieEvent& event) {
+  switch (event.type) {
+    case HomieEventType::MQTT_READY:
+      Serial << "MQTT connected" << endl;
+      gbEnableDoorOperations=true;
+      break;
+    case HomieEventType::MQTT_DISCONNECTED:
+      Serial << "MQTT disconnected, reason: " << (int8_t)event.mqttReason << endl;
+      gbEnableDoorOperations=false;
+      break;
+    case HomieEventType::SENDING_STATISTICS:
+      Serial << "Sending statistics" << endl;
+      nodePos.updateDoorInfo();
+      break;
+  }
+}
+
 /*
- * create the base class instance micros, milli */
-SknLoxRanger lox(250000, 500);
+ * Callback for Homie Broadcasts */
+bool broadcastHandler(const String &level, const String &value)
+{
+  Homie.getLogger() << "Received broadcast level " << level << ": " << value << endl;
+  return true;
+}
 
 /*
  * Arduino Setup: Initialze Homie */
-void setup() {
+void setup()
+{
   delay(100);
   Serial.begin(115200);
   delay(100);
   
+  if (!Serial)
+  {
+    Homie.disableLogging();
+  }
+
   Wire.begin(SDA, SCL);
-  lox.begin().start();
+
+  Homie_setFirmware(SKN_MOD_NAME, SKN_MOD_VERSION);
+  Homie_setBrand(SKN_MOD_BRAND);
+  
+  Homie.setBroadcastHandler(broadcastHandler)
+      .setLedPin(LED_BUILTIN, LOW)
+      .disableResetTrigger()
+      .onEvent(onHomieEvent);
+
+  Homie.setup();
 }
 
 /*
  * Arduino Loop: Cycles Homie Nodes */
-void loop() {
-  lox.loop();
+void loop()
+{
+  Homie.loop();
 }
