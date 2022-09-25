@@ -7,9 +7,9 @@ Homie ESP8266 Node developed using Automaton State Machines and VL53L1x
 
 ## Features
 * OpenHab3 RollerShutter Type
-* Homie/SknGarageDoor/SknRanger/Position/set [ 0:100 ]
+* Homie/SknGarageDoor/SknRanger/Position [ 0:100 ]
 * Homie/SknGarageDoor/SknRanger/State [ STOPPED | MOVING_UP | MOVING_DOWN | MOVING_POS | LEARN_UP | LEARN_DOWN ]
-* Homie/SknGarageDoor/SknRanger/Service [ AUTO_LEARN_UP | AUTO_LEARN_DOWN | REBOOT ]
+* Homie/SknGarageDoor/SknRanger/Service/set [ AUTO_LEARN_UP | AUTO_LEARN_DOWN | REBOOT ]
 * Measures door position in mm, translate to 0:100 range; with 0 considered UP, and 100 Down
 * Auto Learn stores min or max positions in EEPROM via Preferences(SPIFFS); basis for 0:100 range translation.
 
