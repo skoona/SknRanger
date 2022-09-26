@@ -48,8 +48,8 @@ protected:
  * Mount point: 13"   or  330 mm
  * maximum range:        2528 mm
 */
-#define MM_MIN 330
-#define MM_MAX 2528
+#define MM_MIN 152
+#define MM_MAX 2420
           bool limitsSave();
           bool limitsRestore();          
   unsigned int readValue(bool wait=true);
