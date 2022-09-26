@@ -112,8 +112,8 @@ SknLoxRanger::eDirection SknLoxRanger::movement() {
   if (distances[0]  >  distances[capacity]) { eDir=MOVING_UP; }
   if (distances[0]  <  distances[capacity]) { eDir=MOVING_DOWN; }
   if (distances[0]  == distances[capacity]) { eDir=STOPPED; }
-  if (distances[0]  == distances[capacity] && uiDistanceValuePos==0) { eDir=UP; }
-  if (distances[0]  == distances[capacity] && uiDistanceValuePos==100) { eDir=DOWN; }
+  if ( uiDistanceValuePos==0) { eDir=UP; }
+  if ( uiDistanceValuePos==100) { eDir=DOWN; }
   
   if(bAutoLearnUp) {
     cCurrentMode=cMode[AUTO_LEARN_UP];
@@ -341,6 +341,7 @@ bool SknLoxRanger::handleInput(const HomieRange& range, const String& property, 
  */
 void SknLoxRanger::broadcastStatus() {
   if(gbEnableDoorOperations) {
+    cCurrentState=movementString();
     setProperty(cSknPosID).send(String(uiDistanceValuePos));
     setProperty(cSknStateID).send(cCurrentState);
     setProperty(cSknModeID).send(cCurrentMode);
