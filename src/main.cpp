@@ -88,6 +88,13 @@ void onHomieEvent(const HomieEvent& event) {
       gbEnableDoorOperations=true;
       nodePos.start();
       break;
+    case HomieEventType::OTA_STARTED:
+      nodePos.stop();
+      break;
+    case HomieEventType::OTA_SUCCESSFUL:
+    case HomieEventType::OTA_FAILED:
+      nodePos.stop();
+      break;
     case HomieEventType::MQTT_DISCONNECTED:
       Serial << "MQTT disconnected, reason: " << (int8_t)event.mqttReason << endl;
       gbEnableDoorOperations=false;
