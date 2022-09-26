@@ -255,7 +255,7 @@ unsigned int SknLoxRanger::relativeDistance(bool wait) {
 
   /*
    * use fixed ranges while determining new range */
-  if(isAutoLearn()) {
+  if(isLearning()) {
     posValue = map(mmPos, MM_MIN, MM_MAX, 0, 100);
   } else {
     posValue = map(mmPos, iLimitMin, iLimitMax, 0, 100);

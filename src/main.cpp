@@ -58,7 +58,7 @@ extern "C"
 
 
 #define SKN_MOD_NAME "Garage Door Position Monitor"
-#define SKN_MOD_VERSION "1.3.0"
+#define SKN_MOD_VERSION "1.3.1"
 #define SKN_MOD_BRAND "SknSensors"
 
 #define SKN_TITLE "Garage Door Position"
@@ -96,7 +96,7 @@ void onHomieEvent(const HomieEvent& event) {
     case HomieEventType::SENDING_STATISTICS:
       Serial << "Sending statistics" << endl;
       nodePos.broadcastStatus();
-      if(!nodePos.isAutoLearn()) {   // if not autolearning, cycle ranging with stats
+      if(!nodePos.isLearning()) {   // if not autolearning, cycle ranging with stats
         if(nodePos.isActive()) {
           nodePos.stop();
         } else {

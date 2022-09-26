@@ -15,9 +15,9 @@ class SknLoxRanger  : public HomieNode {
 public:
   SknLoxRanger( const char *id, const char *name, const char *cType, unsigned int timingBudgetUS = 250000, unsigned int interMeasurementMS = 1000 );
            bool isActive() { return bActive && bVL53L1xInitialized; }
-           bool isAutoLearn() { return (bAutoLearnUp || bAutoLearnDown) && bVL53L1xInitialized; }
+           bool isLearning() { return (bAutoLearnUp || bAutoLearnDown) && bVL53L1xInitialized; }
            bool isInitialized() { return bVL53L1xInitialized; }
-           bool isReady() { return (isActive() || isAutoLearn()); }
+           bool isReady() { return (isActive() || isLearning()); }
            void broadcastStatus();
     const char* movementString();
   SknLoxRanger& start();
@@ -29,12 +29,10 @@ protected:
   virtual bool handleInput(const HomieRange& range, const String& property, const String& value);
   virtual void loop() override;
 
+private :   
 
   enum eDirection {UP, DOWN,OPEN,LEARNING, EXIT_DIR};
        enum eMode {ACTIVE, AUTO_LEARN_UP, AUTO_LEARN_DOWN, REBOOT, EXIT_MODE};
-
-
-private :   
 
   SknLoxRanger& begin();
      eDirection movement();
