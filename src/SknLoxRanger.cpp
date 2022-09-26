@@ -27,7 +27,7 @@ SknLoxRanger::SknLoxRanger( const char *id, const char *name, const char *cType,
  * 
  */
 SknLoxRanger& SknLoxRanger::vlxLoop() {
-    if(isActive() || isAutoLearn()) {
+    if( isReady() ) {
       relativeDistance(true);   
     }
   return *this;
@@ -54,7 +54,7 @@ SknLoxRanger& SknLoxRanger::begin( ) {
 
   lox.setTimeout(uiInterMeasurement+(2 * (uiTimingBudget/1000)));
 
-  if (lox.setDistanceMode(VL53L1X::Medium)) {  
+  if (lox.setDistanceMode(VL53L1X::Long)) {  
     Serial.printf(" 〽 Medium distance mode accepted.\n");
   }
 
@@ -146,12 +146,10 @@ void SknLoxRanger::manageAutoLearn(long mmPos) {
     if(readings>=autoLearnUpReadings) {
       bAutoLearnUp=false;
       limitsSave();
-      stop();
       snprintf(cBuffer, sizeof(cBuffer), "Auto Learn Range, Up %d mm, Down %d mm", iLimitMin, iLimitMax);
       cCurrentMode = cBuffer;
-      cCurrentState=movementString();
-      setProperty(cSknModeID).send(cCurrentMode);
-      setProperty(cSknStateID).send(cCurrentState);
+      cCurrentState=cDir[READY];
+      stop();
       Serial.printf("✖  SknLoxRanger Auto Learn Up(%d mm) accepted.\n", iLimitMin);
     }
   } else if (bAutoLearnDown) {
@@ -161,12 +159,10 @@ void SknLoxRanger::manageAutoLearn(long mmPos) {
     if(readings>=autoLearnDownReadings) {
       bAutoLearnDown=false;
       limitsSave();
-      stop();
       snprintf(cBuffer, sizeof(cBuffer), "Auto Learn Range, Up %d mm, Down %d mm", iLimitMin, iLimitMax);
       cCurrentMode = cBuffer;
-      cCurrentState=movementString();
-      setProperty(cSknModeID).send(cCurrentMode);
-      setProperty(cSknStateID).send(cCurrentState);
+      cCurrentState=cDir[READY];
+      stop();
       Serial.printf("✖  SknLoxRanger Auto Learn Down(%d mm) accepted.\n", iLimitMax);
     }
   }
@@ -247,13 +243,12 @@ unsigned int SknLoxRanger::relativeDistance(bool wait) {
 
   /*
    * use fixed ranges while determining new range */
-  if(bAutoLearnUp || bAutoLearnDown) {
+  if(isAutoLearn()) {
     posValue = map(mmPos, MM_MIN, MM_MAX, 0, 100);
   } else {
     posValue = map(mmPos, iLimitMin, iLimitMax, 0, 100);
     if(readings>cycleCount) {
       stop(); 
-      broadcastStatus();
     } 
   }
 
@@ -389,8 +384,6 @@ void SknLoxRanger::setup() {
     .setUnit("%")
     .setRetained(true);
 
-  snprintf(cBuffer, sizeof(cBuffer), "Range Limits, min: %d mm, max: %d mm", iLimitMin, iLimitMax);
-  cCurrentMode = cBuffer;
   advertise(cSknModeID)
     .setName("Services")
     .setDatatype("string")

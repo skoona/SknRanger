@@ -17,6 +17,7 @@ public:
            bool isActive() { return bActive && bVL53L1xInitialized; }
            bool isAutoLearn() { return (bAutoLearnUp || bAutoLearnDown) && bVL53L1xInitialized; }
            bool isInitialized() { return bVL53L1xInitialized; }
+           bool isReady() { return (isActive() || isAutoLearn()); }
            void broadcastStatus();
     const char* movementString();
   SknLoxRanger& start();
@@ -66,7 +67,7 @@ private :
 
   char cBuffer[128];
   const char *cSknRangerID  = "Ranger";   // memory key
-  const char *cCurrentState = "DOWN";     // current door state/label
+  const char *cCurrentState = "Ready";     // current door state/label
   const char *cCurrentMode  = "Ready";    // current door state/label
   const char *cDir[EXIT_DIR]       = {"Moving Up","Moving Down","Stopped","Learning Up","Learning Down","Rebooting", "Ready", "Up", "Down"};
   const char *cMode[EXIT_MODE]      = {"READY","AUTO_LEARN_UP","AUTO_LEARN_DOWN","REBOOT"};
