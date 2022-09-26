@@ -65,7 +65,7 @@ SknLoxRanger& SknLoxRanger::begin( ) {
   
   bVL53L1xInitialized=true;
   
-  cCurrentState=cDir[READY];
+  cCurrentState=cDir[OPEN];
   cCurrentState=cMode[ACTIVE];
 
   return(*this);
@@ -104,25 +104,22 @@ SknLoxRanger& SknLoxRanger::stop() {
  * determine direction of movement
 */
 SknLoxRanger::eDirection SknLoxRanger::movement() {
-  eDirection eDir = READY;
+  eDirection eDir = OPEN;
   /* 
     * a > b = UP
     * a < b = DOWN 
     * a == b = STOPPED */
-  if (distances[0]  >  distances[capacity]) { eDir=MOVING_UP; }
-  if (distances[0]  <  distances[capacity]) { eDir=MOVING_DOWN; }
-  if (distances[0]  == distances[capacity]) { eDir=STOPPED; }
   if ( uiDistanceValuePos==0) { eDir=UP; }
   if ( uiDistanceValuePos==100) { eDir=DOWN; }
   
   if(bAutoLearnUp) {
     cCurrentMode=cMode[AUTO_LEARN_UP];
-    cCurrentState=cDir[LEARNING_UP];
-    eDir=LEARNING_UP;
+    cCurrentState=cDir[LEARNING];
+    eDir=LEARNING;
   } else if(bAutoLearnDown) {
     cCurrentMode=cMode[AUTO_LEARN_DOWN];
-    cCurrentState=cDir[LEARNING_DOWN];
-    eDir=LEARNING_DOWN;
+    cCurrentState=cDir[LEARNING];
+    eDir=LEARNING;
   }
   return eDir;
 }
@@ -141,27 +138,27 @@ void SknLoxRanger::manageAutoLearn(long mmPos) {
   readings++;
   if(bAutoLearnUp) {
     iLimitMin = mmPos;
-    cCurrentState=cDir[LEARNING_UP];
+    cCurrentState=cDir[LEARNING];
     cCurrentMode = cMode[AUTO_LEARN_UP];
     if(readings>=autoLearnUpReadings) {
       bAutoLearnUp=false;
       limitsSave();
       snprintf(cBuffer, sizeof(cBuffer), "Auto Learn Range, Up %d mm, Down %d mm", iLimitMin, iLimitMax);
       cCurrentMode = cBuffer;
-      cCurrentState=cDir[READY];
+      cCurrentState=movementString();
       stop();
       Serial.printf("✖  SknLoxRanger Auto Learn Up(%d mm) accepted.\n", iLimitMin);
     }
   } else if (bAutoLearnDown) {
     iLimitMax = mmPos;
-    cCurrentState=cDir[LEARNING_DOWN];
+    cCurrentState=cDir[LEARNING];
     cCurrentMode = cMode[AUTO_LEARN_DOWN];
     if(readings>=autoLearnDownReadings) {
       bAutoLearnDown=false;
       limitsSave();
       snprintf(cBuffer, sizeof(cBuffer), "Auto Learn Range, Up %d mm, Down %d mm", iLimitMin, iLimitMax);
       cCurrentMode = cBuffer;
-      cCurrentState=cDir[READY];
+      cCurrentState=movementString();
       stop();
       Serial.printf("✖  SknLoxRanger Auto Learn Down(%d mm) accepted.\n", iLimitMax);
     }
@@ -169,6 +166,22 @@ void SknLoxRanger::manageAutoLearn(long mmPos) {
 
 }
 
+/**
+ * @brief JSON formatted Position
+ * 
+ */
+const char * SknLoxRanger::formatJSON() {
+  snprintf(rangingJSON, sizeof(rangingJSON), "{\"range\":%u,\"average\":%lu,\"status\":\"%s\",\"raw_status\":%u,\"signal\":%3.1f,\"ambient\":%3.1f,\"movement\":\"%s\"}",
+                uiDistanceValue,
+                uiDistanceValueMM,
+                lox.rangeStatusToString(sDat.range_status),
+                sDat.range_status,
+                sDat.peak_signal_count_rate_MCPS,
+                sDat.ambient_count_rate_MCPS,
+                movementString()); 
+  cCurrentJSON = rangingJSON;
+  return rangingJSON;
+}
 /**
  * @brief read value when available ready and return average value.
  * 
@@ -202,6 +215,7 @@ unsigned int SknLoxRanger::readValue(bool wait)
     distances[capacity] = value;
     avg = (sum / capacity);
     uiDistanceValueMM = (unsigned int)avg;
+    uiDistanceValue = value;
   }  else   {
     distances[capacity] = value;
     avg = 0;
@@ -235,8 +249,6 @@ unsigned int SknLoxRanger::relativeDistance(bool wait) {
     mmPos = (long)readValue(wait);
   }
 
-  cCurrentState=movementString();
-
   /*
    * determine the new ranges and save to eeprom */
   manageAutoLearn(mmPos);
@@ -254,9 +266,12 @@ unsigned int SknLoxRanger::relativeDistance(bool wait) {
 
   mmPos = constrain( posValue, 0, 100);
   if(mmPos!=uiDistanceValuePos) {
-    setProperty(cSknPosID).send(String(uiDistanceValuePos));
+    uiDistanceValuePos = mmPos;
+    formatJSON();
+    setProperty(cSknPosID).send(String(mmPos));
+    setProperty(cSknDetailID).send(cCurrentJSON);
   }
-  uiDistanceValuePos = mmPos;
+  formatJSON();
 
   Serial.printf("✖  relativeDistance(%ld %%) accepted.\n", mmPos);
 
@@ -306,22 +321,22 @@ bool SknLoxRanger::handleInput(const HomieRange& range, const String& property, 
     if(value.equalsIgnoreCase("reboot")) {
       stop();
       Homie.getLogger() << cIndent << "RESTARTING OR REBOOTING MACHINE ";
-      cCurrentMode =  "Rebooting in 5 seconds";
-      cCurrentState = cDir[REBOOTING];
+      cCurrentMode =  cMode[REBOOT];
+      cCurrentState = cDir[OPEN];
       ESP.restart();
       rc = true;
     } else if (value.equalsIgnoreCase("auto_learn_up")) {
       Homie.getLogger() << cIndent << "Auto Learn Up ";
-      cCurrentMode =  "Auto Learn Up";
-      cCurrentState = cDir[LEARNING_UP];
+      cCurrentMode =  cMode[AUTO_LEARN_UP];
+      cCurrentState = cDir[LEARNING];
       autoLearnUpReadings = readings + AUTO_LEARN_READINGS;
       bAutoLearnUp = true;
       if(!bActive) start();      
       rc = true;
     } else if (value.equalsIgnoreCase("auto_learn_down")) {
       Homie.getLogger() << cIndent << "Auto Learn Down ";
-      cCurrentMode =  "Auto Learn Down";
-      cCurrentState = cDir[LEARNING_DOWN];
+      cCurrentMode =  cMode[AUTO_LEARN_DOWN];
+      cCurrentState = cDir[LEARNING];
       autoLearnDownReadings = readings + AUTO_LEARN_READINGS;
       bAutoLearnDown = true;
       if(!bActive) start();      
@@ -345,6 +360,7 @@ void SknLoxRanger::broadcastStatus() {
     setProperty(cSknPosID).send(String(uiDistanceValuePos));
     setProperty(cSknStateID).send(cCurrentState);
     setProperty(cSknModeID).send(cCurrentMode);
+    setProperty(cSknDetailID).send(cCurrentJSON);
   }
 }
 
@@ -375,7 +391,7 @@ void SknLoxRanger::setup() {
    advertise(cSknStateID)
     .setName("State")
     .setDatatype("enum")
-    .setFormat("MOVING_UP,MOVING_DOWN,STOPPED,LEARNING_UP,LEARNING_DOWN,REBOOTING,READY")
+    .setFormat("UP,DOWN,OPEN,LEARNING")
     .setRetained(true);
 
   advertise(cSknPosID)
@@ -391,6 +407,11 @@ void SknLoxRanger::setup() {
     .setFormat("READY,AUTO_LEARN_UP,AUTO_LEARN_DOWN,REBOOT")
     .settable();
     // Commands: auto_learn_up, auto_learn_down, reboot
+
+   advertise(cSknDetailID)
+    .setName("Details")
+    .setDatatype("string")
+    .setFormat("json");
 
   Homie.getLogger()
       << "✖ "

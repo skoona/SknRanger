@@ -30,7 +30,7 @@ protected:
   virtual void loop() override;
 
 
-  enum eDirection {MOVING_UP,MOVING_DOWN,STOPPED,LEARNING_UP,LEARNING_DOWN,REBOOTING, READY, UP, DOWN, EXIT_DIR};
+  enum eDirection {UP, DOWN,OPEN,LEARNING, EXIT_DIR};
        enum eMode {ACTIVE, AUTO_LEARN_UP, AUTO_LEARN_DOWN, REBOOT, EXIT_MODE};
 
   SknLoxRanger& begin();
@@ -40,6 +40,8 @@ protected:
   SknLoxRanger& vlxLoop();
    unsigned int currentMM() { return uiDistanceValueMM; };  
    unsigned int currentPos() { return uiDistanceValuePos; };  
+   const char * currentJSON() {return cCurrentJSON; }
+   const char * formatJSON();
 
 /*
  * Door travel: 86.5" or 2198 mm
@@ -54,8 +56,9 @@ protected:
            int iLimitMin = MM_MIN;    // logical UP,   or closest to sensor
            int iLimitMax = MM_MAX;    // logical DOWN, or farest from sensor
   
-  unsigned int uiDistanceValueMM = 0;
-  unsigned int uiDistanceValuePos = 0;
+  unsigned int uiDistanceValueMM  = 0;          // avg
+  unsigned int uiDistanceValue    = 0;          // actual
+  unsigned int uiDistanceValuePos = 0;          // transposed
   unsigned int uiTimingBudget;
   unsigned int uiInterMeasurement;
 
@@ -66,11 +69,13 @@ private :
   Preferences prefs;                      // stored ranger limit min - max
 
   char cBuffer[128];
+  char rangingJSON[256];
   const char *cSknRangerID  = "Ranger";   // memory key
-  const char *cCurrentState = "Ready";     // current door state/label
-  const char *cCurrentMode  = "Ready";    // current door state/label
-  const char *cDir[EXIT_DIR]       = {"Moving Up","Moving Down","Stopped","Learning Up","Learning Down","Rebooting", "Ready", "Up", "Down"};
-  const char *cMode[EXIT_MODE]      = {"READY","AUTO_LEARN_UP","AUTO_LEARN_DOWN","REBOOT"};
+  const char *cCurrentState = "Ready";    // current state/label
+  const char *cCurrentMode  = "Ready";    // current mode/label
+  const char *cCurrentJSON  = "{}";       // current positon details
+  const char *cDir[EXIT_DIR] = {"Up","Down","Open", "Learning"};
+  const char *cMode[EXIT_MODE] = {"Ready","Auto Learn Up","Auto Learn Down","Rebooting"};
 
   #define MAX_SAMPLES 5
       const int capacity = (MAX_SAMPLES);
@@ -94,11 +99,11 @@ private :
   //   float ambient_count_rate_MCPS;
   // };
 
-
   const char *cCaption   = "• Garage Door Automaton Module:";
   const char *cIndent    = " ✖  ";
   const char *cSknStateID  = "State";         // Direction name; UP, DOWN, STOPPED,...
   const char *cSknPosID  = "Position";      // Range 0 to 100;
   const char *cSknModeID = "Service";       // service commander to force reboot of node
+  const char *cSknDetailID = "Details";       // service commander to force reboot of node
 
 };
