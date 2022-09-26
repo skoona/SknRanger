@@ -58,7 +58,7 @@ extern "C"
 
 
 #define SKN_MOD_NAME "Garage Door Position Monitor"
-#define SKN_MOD_VERSION "1.0.6"
+#define SKN_MOD_VERSION "1.1.0"
 #define SKN_MOD_BRAND "SknSensors"
 
 #define SKN_TITLE "Garage Door Position"
@@ -88,13 +88,6 @@ void onHomieEvent(const HomieEvent& event) {
       gbEnableDoorOperations=true;
       nodePos.start();
       break;
-    case HomieEventType::OTA_STARTED:
-      nodePos.stop();
-      break;
-    case HomieEventType::OTA_SUCCESSFUL:
-    case HomieEventType::OTA_FAILED:
-      nodePos.stop();
-      break;
     case HomieEventType::MQTT_DISCONNECTED:
       Serial << "MQTT disconnected, reason: " << (int8_t)event.mqttReason << endl;
       gbEnableDoorOperations=false;
@@ -110,6 +103,13 @@ void onHomieEvent(const HomieEvent& event) {
           nodePos.start();
         }
       }
+      break;
+    case HomieEventType::OTA_STARTED:
+      nodePos.stop();
+      break;
+    case HomieEventType::OTA_SUCCESSFUL:
+    case HomieEventType::OTA_FAILED:
+      nodePos.stop();
       break;
   }
 }

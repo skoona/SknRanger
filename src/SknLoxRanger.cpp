@@ -20,7 +20,6 @@ SknLoxRanger::SknLoxRanger( const char *id, const char *name, const char *cType,
       distances[idx] = 0;
   }
 
-    limitsRestore();
 }
 
 /**
@@ -42,6 +41,8 @@ SknLoxRanger& SknLoxRanger::vlxLoop() {
 SknLoxRanger& SknLoxRanger::begin( ) {
   if(isInitialized()) return *this;     // no double dips
 
+  limitsRestore(); // load the limits
+
   Serial.printf("✖  SknLoxRanger initialization starting.\n");
   lox.setTimeout(uiInterMeasurement+(2 * (uiTimingBudget/1000)));
 
@@ -50,6 +51,8 @@ SknLoxRanger& SknLoxRanger::begin( ) {
     delay(1000);
   }
   Serial.printf(" 〽  Exited initialize sensor!\n");
+
+  lox.setTimeout(uiInterMeasurement+(2 * (uiTimingBudget/1000)));
 
   if (lox.setDistanceMode(VL53L1X::Medium)) {  
     Serial.printf(" 〽 Medium distance mode accepted.\n");
@@ -75,7 +78,7 @@ SknLoxRanger& SknLoxRanger::begin( ) {
 */
 SknLoxRanger&  SknLoxRanger::start() {
   if(!isInitialized()) return *this;
-  if(!bActive) {
+  if(!isActive()) {
     lox.startContinuous(uiInterMeasurement + (2 * (uiTimingBudget/1000)));
     bActive=true;
     cycleCount = readings + 60;
@@ -88,7 +91,7 @@ SknLoxRanger&  SknLoxRanger::start() {
  * Stop device
 */
 SknLoxRanger& SknLoxRanger::stop() {
-  if(bActive) {    
+  if(isActive()) {    
     lox.stopContinuous();  
     bActive=false;
     Serial.printf("✖  SknLoxRanger stopContinuous() accepted.\n");
@@ -115,9 +118,11 @@ SknLoxRanger::eDirection SknLoxRanger::movement() {
   if(bAutoLearnUp) {
     cCurrentMode=cMode[AUTO_LEARN_UP];
     cCurrentState=cDir[LEARNING_UP];
+    eDir=LEARNING_UP;
   } else if(bAutoLearnDown) {
     cCurrentMode=cMode[AUTO_LEARN_DOWN];
     cCurrentState=cDir[LEARNING_DOWN];
+    eDir=LEARNING_DOWN;
   }
   return eDir;
 }
@@ -210,10 +215,10 @@ unsigned int SknLoxRanger::readValue(bool wait)
                     readings,
                     value,
                     avg,
-                    lox.rangeStatusToString(sDat.range_status),
-                    sDat.range_status,
-                    sDat.peak_signal_count_rate_MCPS,
-                    sDat.ambient_count_rate_MCPS,
+                    lox.rangeStatusToString(lox.ranging_data.range_status),
+                    lox.ranging_data.range_status,
+                    lox.ranging_data.peak_signal_count_rate_MCPS,
+                    lox.ranging_data.ambient_count_rate_MCPS,
                     movementString()); 
   
   return avg;
