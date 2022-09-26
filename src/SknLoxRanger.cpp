@@ -171,7 +171,7 @@ void SknLoxRanger::manageAutoLearn(long mmPos) {
  * 
  */
 const char * SknLoxRanger::formatJSON() {
-  snprintf(rangingJSON, sizeof(rangingJSON), "{\"range\":%u,\"average\":%lu,\"status\":\"%s\",\"raw_status\":%u,\"signal\":%3.1f,\"ambient\":%3.1f,\"movement\":\"%s\"}",
+  snprintf(rangingJSON, sizeof(rangingJSON), "{\"range\":%u,\"average\":%u,\"status\":\"%s\",\"raw_status\":%u,\"signal\":%3.1f,\"ambient\":%3.1f,\"movement\":\"%s\"}",
                 uiDistanceValue,
                 uiDistanceValueMM,
                 lox.rangeStatusToString(sDat.range_status),

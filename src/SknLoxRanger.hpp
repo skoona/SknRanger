@@ -33,16 +33,18 @@ protected:
   enum eDirection {UP, DOWN,OPEN,LEARNING, EXIT_DIR};
        enum eMode {ACTIVE, AUTO_LEARN_UP, AUTO_LEARN_DOWN, REBOOT, EXIT_MODE};
 
+
+private :   
+
   SknLoxRanger& begin();
-           void manageAutoLearn(long mmPos);
-   unsigned int relativeDistance(bool wait=false);
      eDirection movement();
-  SknLoxRanger& vlxLoop();
    unsigned int currentMM() { return uiDistanceValueMM; };  
    unsigned int currentPos() { return uiDistanceValuePos; };  
    const char * currentJSON() {return cCurrentJSON; }
    const char * formatJSON();
-
+  SknLoxRanger& vlxLoop();
+           void manageAutoLearn(long mmPos);
+   unsigned int relativeDistance(bool wait=false);
 /*
  * Door travel: 86.5" or 2198 mm
  * Mount point: 13"   or  330 mm
@@ -61,9 +63,6 @@ protected:
   unsigned int uiDistanceValuePos = 0;          // transposed
   unsigned int uiTimingBudget;
   unsigned int uiInterMeasurement;
-
-
-private :   
 
       VL53L1X lox;                        // Ranging Device
   Preferences prefs;                      // stored ranger limit min - max
