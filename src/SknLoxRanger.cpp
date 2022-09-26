@@ -19,6 +19,8 @@ SknLoxRanger::SknLoxRanger( const char *id, const char *name, const char *cType,
   for (int idx = 0; idx < (MAX_SAMPLES); idx++) {
       distances[idx] = 0;
   }
+
+    limitsRestore();
 }
 
 /**
@@ -26,7 +28,6 @@ SknLoxRanger::SknLoxRanger( const char *id, const char *name, const char *cType,
  * 
  */
 SknLoxRanger& SknLoxRanger::vlxLoop() {
-    if(!isInitialized()) return *this;
     if(isActive() || isAutoLearn()) {
       relativeDistance(true);   
     }
@@ -39,16 +40,16 @@ SknLoxRanger& SknLoxRanger::vlxLoop() {
  * - one reading every second
  */
 SknLoxRanger& SknLoxRanger::begin( ) {
-  Serial.printf(" ✖  SknLoxRanger initialization starting.\n");
-  limitsRestore();
+  if(isInitialized()) return *this;     // no double dips
+
+  Serial.printf("✖  SknLoxRanger initialization starting.\n");
+  lox.setTimeout(uiInterMeasurement+(2 * (uiTimingBudget/1000)));
 
   while (!lox.init()) {
-    Serial.printf(" ✖  Failed to detect and initialize sensor!\n");
+    Serial.printf("✖  Failed to detect and initialize sensor!\n");
     delay(1000);
   }
   Serial.printf(" 〽  Exited initialize sensor!\n");
-
-  lox.setTimeout(uiInterMeasurement+(uiTimingBudget/1000));
 
   if (lox.setDistanceMode(VL53L1X::Medium)) {  
     Serial.printf(" 〽 Medium distance mode accepted.\n");
@@ -57,10 +58,12 @@ SknLoxRanger& SknLoxRanger::begin( ) {
   if (lox.setMeasurementTimingBudget(uiTimingBudget)) {
     Serial.printf(" 〽 %ums timing budget accepted.\n", uiTimingBudget/1000);
   } 
-  Serial.printf(" ✖  SknLoxRanger initialization Complete.\n");
+  Serial.printf("✖  SknLoxRanger initialization Complete.\n");
   
   bVL53L1xInitialized=true;
-  cCurrentState=cMode[0];
+  
+  cCurrentState=cDir[READY];
+  cCurrentState=cMode[ACTIVE];
 
   return(*this);
 }
@@ -73,10 +76,10 @@ SknLoxRanger& SknLoxRanger::begin( ) {
 SknLoxRanger&  SknLoxRanger::start() {
   if(!isInitialized()) return *this;
   if(!bActive) {
-    lox.startContinuous(uiInterMeasurement);
+    lox.startContinuous(uiInterMeasurement + (2 * (uiTimingBudget/1000)));
     bActive=true;
     cycleCount = readings + 60;
-    Serial.printf(" ✖  SknLoxRanger startContinuous(%ums) accepted.\n", uiInterMeasurement);
+    Serial.printf("✖  SknLoxRanger startContinuous(%ums) accepted.\n", uiInterMeasurement + (2 * (uiTimingBudget/1000)));
   }
   return *this;
 }
@@ -85,11 +88,10 @@ SknLoxRanger&  SknLoxRanger::start() {
  * Stop device
 */
 SknLoxRanger& SknLoxRanger::stop() {
-  if(!isInitialized()) return *this;
   if(bActive) {    
     lox.stopContinuous();  
     bActive=false;
-    Serial.printf(" ✖  SknLoxRanger stopContinuous() accepted.\n");
+    Serial.printf("✖  SknLoxRanger stopContinuous() accepted.\n");
     broadcastStatus();
   }
   return *this;
@@ -99,7 +101,7 @@ SknLoxRanger& SknLoxRanger::stop() {
  * determine direction of movement
 */
 SknLoxRanger::eDirection SknLoxRanger::movement() {
-  eDirection eDir = STOPPED;
+  eDirection eDir = READY;
   /* 
     * a > b = UP
     * a < b = DOWN 
@@ -107,17 +109,15 @@ SknLoxRanger::eDirection SknLoxRanger::movement() {
   if (distances[0]  >  distances[capacity]) { eDir=MOVING_UP; }
   if (distances[0]  <  distances[capacity]) { eDir=MOVING_DOWN; }
   if (distances[0]  == distances[capacity]) { eDir=STOPPED; }
+  if (distances[0]  == distances[capacity] && uiDistanceValuePos==0) { eDir=UP; }
+  if (distances[0]  == distances[capacity] && uiDistanceValuePos==100) { eDir=DOWN; }
   
   if(bAutoLearnUp) {
-    cCurrentMode=cDir[LEARNING_UP];
+    cCurrentMode=cMode[AUTO_LEARN_UP];
     cCurrentState=cDir[LEARNING_UP];
-    setProperty(cSknModeID).send(cCurrentMode);
-    setProperty(cSknState).send(cCurrentState);
   } else if(bAutoLearnDown) {
-    cCurrentMode=cDir[LEARNING_DOWN];
+    cCurrentMode=cMode[AUTO_LEARN_DOWN];
     cCurrentState=cDir[LEARNING_DOWN];
-    setProperty(cSknModeID).send(cCurrentMode);
-    setProperty(cSknState).send(cCurrentState);
   }
   return eDir;
 }
@@ -136,29 +136,33 @@ void SknLoxRanger::manageAutoLearn(long mmPos) {
   readings++;
   if(bAutoLearnUp) {
     iLimitMin = mmPos;
+    cCurrentState=cDir[LEARNING_UP];
+    cCurrentMode = cMode[AUTO_LEARN_UP];
     if(readings>=autoLearnUpReadings) {
       bAutoLearnUp=false;
       limitsSave();
       stop();
       snprintf(cBuffer, sizeof(cBuffer), "Auto Learn Range, Up %d mm, Down %d mm", iLimitMin, iLimitMax);
       cCurrentMode = cBuffer;
-      cCurrentState=cMode[0];
+      cCurrentState=movementString();
       setProperty(cSknModeID).send(cCurrentMode);
-      setProperty(cSknState).send(cCurrentState);
-      Serial.printf(" ✖  SknLoxRanger Auto Learn Up(%d mm) accepted.\n", iLimitMin);
+      setProperty(cSknStateID).send(cCurrentState);
+      Serial.printf("✖  SknLoxRanger Auto Learn Up(%d mm) accepted.\n", iLimitMin);
     }
   } else if (bAutoLearnDown) {
     iLimitMax = mmPos;
+    cCurrentState=cDir[LEARNING_DOWN];
+    cCurrentMode = cMode[AUTO_LEARN_DOWN];
     if(readings>=autoLearnDownReadings) {
       bAutoLearnDown=false;
       limitsSave();
       stop();
       snprintf(cBuffer, sizeof(cBuffer), "Auto Learn Range, Up %d mm, Down %d mm", iLimitMin, iLimitMax);
       cCurrentMode = cBuffer;
-      cCurrentState=cMode[0];
+      cCurrentState=movementString();
       setProperty(cSknModeID).send(cCurrentMode);
-      setProperty(cSknState).send(cCurrentState);
-      Serial.printf(" ✖  SknLoxRanger Auto Learn Down(%d mm) accepted.\n", iLimitMax);
+      setProperty(cSknStateID).send(cCurrentState);
+      Serial.printf("✖  SknLoxRanger Auto Learn Down(%d mm) accepted.\n", iLimitMax);
     }
   }
 
@@ -182,8 +186,7 @@ unsigned int SknLoxRanger::readValue(bool wait)
   
   if (lox.timeoutOccurred()) { Serial.print(" TIMEOUT"); }
 
-  if (lox.ranging_data.range_status == VL53L1X::RangeValid)
-  {
+  if (lox.ranging_data.range_status == VL53L1X::RangeValid)  {
     sDat.range_mm = lox.ranging_data.range_mm;
     sDat.range_status = lox.ranging_data.range_status;
     sDat.peak_signal_count_rate_MCPS = lox.ranging_data.peak_signal_count_rate_MCPS;
@@ -198,9 +201,7 @@ unsigned int SknLoxRanger::readValue(bool wait)
     distances[capacity] = value;
     avg = (sum / capacity);
     uiDistanceValueMM = (unsigned int)avg;
-  }
-  else
-  {
+  }  else   {
     distances[capacity] = value;
     avg = 0;
   }
@@ -257,7 +258,7 @@ unsigned int SknLoxRanger::relativeDistance(bool wait) {
   }
   uiDistanceValuePos = mmPos;
 
-  Serial.printf(" ✖  relativeDistance(%ld %%) accepted.\n", mmPos);
+  Serial.printf("✖  relativeDistance(%ld %%) accepted.\n", mmPos);
 
   return (unsigned int) mmPos;
 }
@@ -298,26 +299,29 @@ bool SknLoxRanger::limitsRestore() {
  */
 bool SknLoxRanger::handleInput(const HomieRange& range, const String& property, const String& value) {
   bool rc = false;
-  Homie.getLogger() << cIndent << " 〽 handleInput -> property '" << property << "' value=" << value << endl;
+  Homie.getLogger() << cIndent << "handleInput -> property '" << property << "' value=" << value << endl;
 
     // Node Services
   if(property.equalsIgnoreCase(cSknModeID)) {
     if(value.equalsIgnoreCase("reboot")) {
       stop();
-      Homie.getLogger() << cIndent << "✖ RESTARTING OR REBOOTING MACHINE ";
+      Homie.getLogger() << cIndent << "RESTARTING OR REBOOTING MACHINE ";
       cCurrentMode =  "Rebooting in 5 seconds";
+      cCurrentState = cDir[REBOOTING];
       ESP.restart();
       rc = true;
     } else if (value.equalsIgnoreCase("auto_learn_up")) {
-      Homie.getLogger() << cIndent << "✖ Auto Learn Up ";
+      Homie.getLogger() << cIndent << "Auto Learn Up ";
       cCurrentMode =  "Auto Learn Up";
+      cCurrentState = cDir[LEARNING_UP];
       autoLearnUpReadings = readings + AUTO_LEARN_READINGS;
       bAutoLearnUp = true;
       if(!bActive) start();      
       rc = true;
     } else if (value.equalsIgnoreCase("auto_learn_down")) {
-      Homie.getLogger() << cIndent << "✖ Auto Learn Down ";
+      Homie.getLogger() << cIndent << "Auto Learn Down ";
       cCurrentMode =  "Auto Learn Down";
+      cCurrentState = cDir[LEARNING_DOWN];
       autoLearnDownReadings = readings + AUTO_LEARN_READINGS;
       bAutoLearnDown = true;
       if(!bActive) start();      
@@ -338,7 +342,7 @@ bool SknLoxRanger::handleInput(const HomieRange& range, const String& property, 
 void SknLoxRanger::broadcastStatus() {
   if(gbEnableDoorOperations) {
     setProperty(cSknPosID).send(String(uiDistanceValuePos));
-    setProperty(cSknState).send(cCurrentState);
+    setProperty(cSknStateID).send(cCurrentState);
     setProperty(cSknModeID).send(cCurrentMode);
   }
 }
@@ -350,7 +354,7 @@ void SknLoxRanger::onReadyToOperate() {
   begin();
 
   Homie.getLogger()
-      << " ✖  "
+      << "✖  "
       << "Node: " << getName()
       << " Ready to operate: " 
       << cCurrentState
@@ -367,10 +371,10 @@ void SknLoxRanger::onReadyToOperate() {
  */
 void SknLoxRanger::setup() {
 
-   advertise(cSknState)
+   advertise(cSknStateID)
     .setName("State")
     .setDatatype("enum")
-    .setFormat("MOVING_UP,MOVING_DOWN,STOPPED,LEARN_UP,LEARN_DOWN,REBOOTING")
+    .setFormat("MOVING_UP,MOVING_DOWN,STOPPED,LEARNING_UP,LEARNING_DOWN,REBOOTING,READY")
     .setRetained(true);
 
   advertise(cSknPosID)
@@ -379,7 +383,6 @@ void SknLoxRanger::setup() {
     .setFormat("0:100")
     .setUnit("%")
     .setRetained(true);
-    // Commands: digits:0-100,
 
   snprintf(cBuffer, sizeof(cBuffer), "Range Limits, min: %d mm, max: %d mm", iLimitMin, iLimitMax);
   cCurrentMode = cBuffer;

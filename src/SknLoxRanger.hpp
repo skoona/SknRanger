@@ -29,7 +29,9 @@ protected:
   virtual void loop() override;
 
 
-  enum eDirection {MOVING_UP,MOVING_DOWN,STOPPED,LEARNING_UP,LEARNING_DOWN,REBOOTING, EXIT};
+  enum eDirection {MOVING_UP,MOVING_DOWN,STOPPED,LEARNING_UP,LEARNING_DOWN,REBOOTING, READY, UP, DOWN, EXIT_DIR};
+       enum eMode {ACTIVE, AUTO_LEARN_UP, AUTO_LEARN_DOWN, REBOOT, EXIT_MODE};
+
   SknLoxRanger& begin();
            void manageAutoLearn(long mmPos);
    unsigned int relativeDistance(bool wait=false);
@@ -66,8 +68,8 @@ private :
   const char *cSknRangerID  = "Ranger";   // memory key
   const char *cCurrentState = "DOWN";     // current door state/label
   const char *cCurrentMode  = "Ready";    // current door state/label
-  const char *cDir[6]       = {"MOVING_UP","MOVING_DOWN","STOPPED","LEARNING_UP","LEARNING_DOWN","REBOOTING"};
-  const char *cMode[4]      = {"READY","AUTO_LEARN_UP","AUTO_LEARN_DOWN","REBOOT"};
+  const char *cDir[EXIT_DIR]       = {"Moving Up","Moving Down","Stopped","Learning Up","Learning Down","Rebooting", "Ready", "Up", "Down"};
+  const char *cMode[EXIT_MODE]      = {"READY","AUTO_LEARN_UP","AUTO_LEARN_DOWN","REBOOT"};
 
   #define MAX_SAMPLES 5
       const int capacity = (MAX_SAMPLES);
@@ -94,7 +96,7 @@ private :
 
   const char *cCaption   = "• Garage Door Automaton Module:";
   const char *cIndent    = " ✖  ";
-  const char *cSknState  = "State";         // Direction name; UP, DOWN, STOPPED,...
+  const char *cSknStateID  = "State";         // Direction name; UP, DOWN, STOPPED,...
   const char *cSknPosID  = "Position";      // Range 0 to 100;
   const char *cSknModeID = "Service";       // service commander to force reboot of node
 
