@@ -23,17 +23,6 @@ SknLoxRanger::SknLoxRanger( const char *id, const char *name, const char *cType,
 }
 
 /**
- * @brief Processing Loop
- * 
- */
-SknLoxRanger& SknLoxRanger::vlxLoop() {
-    if( isReady() ) {
-      relativeDistance(true);   
-    }
-  return *this;
-}
-
-/**
  * VL53L1x Device Init
  * - delay(1000); Delay is not working in this class ???
  * - one reading every second
@@ -81,7 +70,7 @@ SknLoxRanger&  SknLoxRanger::start() {
   if(!isActive()) {
     lox.startContinuous(uiInterMeasurement + (2 * (uiTimingBudget/1000)));
     bActive=true;
-    cycleCount = readings + 60;
+    cycleCount = readings + 60;    
     Serial.printf("✖  SknLoxRanger startContinuous(%ums) accepted.\n", uiInterMeasurement + (2 * (uiTimingBudget/1000)));
   }
   return *this;
@@ -94,6 +83,7 @@ SknLoxRanger& SknLoxRanger::stop() {
   if(isActive()) {    
     lox.stopContinuous();  
     bActive=false;
+    ulLastTrigger = millis();
     Serial.printf("✖  SknLoxRanger stopContinuous() accepted.\n");
     broadcastStatus();
   }
@@ -105,22 +95,13 @@ SknLoxRanger& SknLoxRanger::stop() {
 */
 SknLoxRanger::eDirection SknLoxRanger::movement() {
   eDirection eDir = OPEN;
-  /* 
-    * a > b = UP
-    * a < b = DOWN 
-    * a == b = STOPPED */
+
   if ( uiDistanceValuePos==0) { eDir=UP; }
   if ( uiDistanceValuePos==100) { eDir=DOWN; }
   
-  if(bAutoLearnUp) {
-    cCurrentMode=cMode[AUTO_LEARN_UP];
-    cCurrentState=cDir[LEARNING];
-    eDir=LEARNING;
-  } else if(bAutoLearnDown) {
-    cCurrentMode=cMode[AUTO_LEARN_DOWN];
-    cCurrentState=cDir[LEARNING];
-    eDir=LEARNING;
-  }
+  if(bAutoLearnUp) { eDir=LEARNING; } 
+  if(bAutoLearnDown) { eDir=LEARNING; }
+  
   return eDir;
 }
 
@@ -171,9 +152,10 @@ void SknLoxRanger::manageAutoLearn(long mmPos) {
  * 
  */
 const char * SknLoxRanger::formatJSON() {
-  snprintf(rangingJSON, sizeof(rangingJSON), "{\"range\":%u,\"average\":%u,\"status\":\"%s\",\"raw_status\":%u,\"signal\":%3.1f,\"ambient\":%3.1f,\"movement\":\"%s\"}",
+  snprintf(rangingJSON, sizeof(rangingJSON), "{\"range\":%u,\"average\":%u,\"mapped\":%u,\"status\":\"%s\",\"raw_status\":%u,\"signal\":%3.1f,\"ambient\":%3.1f,\"movement\":\"%s\"}",
                 uiDistanceValue,
                 uiDistanceValueMM,
+                uiDistanceValuePos,
                 lox.rangeStatusToString(sDat.range_status),
                 sDat.range_status,
                 sDat.peak_signal_count_rate_MCPS,
@@ -239,15 +221,17 @@ unsigned int SknLoxRanger::readValue(bool wait)
  */
 unsigned int SknLoxRanger::relativeDistance(bool wait) {
   long posValue;
-  long mmPos;
+  long mmPos = 0;
   
   /*
    * get valid value */
-  mmPos = (long)readValue(wait);
-  while(mmPos==0) {        // get a vaild value before proceeding
-    Serial.printf(" 〽  relativeDistance(0 mm) NOT accepted.\n");
+  do {
+    
     mmPos = (long)readValue(wait);
-  }
+
+    if (mmPos==0) { Serial.printf(" 〽  relativeDistance(0 mm) NOT accepted.\n"); }
+
+  } while(mmPos==0); // get a vaild value before proceeding
 
   /*
    * determine the new ranges and save to eeprom */
@@ -421,10 +405,22 @@ void SknLoxRanger::setup() {
 }
 
 /**
- *
+ * Processing loop
+ * - start after every 60 seconds after last idle period
+ * - process reading once mqtt is active 
+ *   and vl53l1x has been initialized.
  */
 void SknLoxRanger::loop() {
+  if(!isActive()) {
+    if( millis() > (ulLastTrigger + ulTrigger) ) {     
+      start();
+    }
+  }
+
   if(gbEnableDoorOperations) {
-    vlxLoop();
+    if( isReady() ) {
+      relativeDistance(true);   
+    }
   }
 }
+

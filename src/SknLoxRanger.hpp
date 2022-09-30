@@ -40,7 +40,6 @@ private :
    unsigned int currentPos() { return uiDistanceValuePos; };  
    const char * currentJSON() {return cCurrentJSON; }
    const char * formatJSON();
-  SknLoxRanger& vlxLoop();
            void manageAutoLearn(long mmPos);
    unsigned int relativeDistance(bool wait=false);
 /*
@@ -61,6 +60,9 @@ private :
   unsigned int uiDistanceValuePos = 0;          // transposed
   unsigned int uiTimingBudget;
   unsigned int uiInterMeasurement;
+
+  unsigned long ulLastTrigger = 0;
+  unsigned long ulTrigger = 60000; // 60 seconds after last idle/stop,   Stats are sent every 300 seconds or 300000 ms
 
       VL53L1X lox;                        // Ranging Device
   Preferences prefs;                      // stored ranger limit min - max
