@@ -73,8 +73,8 @@ private :
   const char *cCurrentState = "Ready";    // current state/label
   const char *cCurrentMode  = "Ready";    // current mode/label
   const char *cCurrentJSON  = "{}";       // current positon details
-  const char *cDir[EXIT_DIR] = {"Up","Down","Open", "Learning"};
-  const char *cMode[EXIT_MODE] = {"Ready","Auto Learn Up","Auto Learn Down","Rebooting"};
+  const char *cDir[EXIT_DIR] = {"UP","DOWN","OPEN", "LEARNING"};
+  const char *cMode[EXIT_MODE] = {"READY","AUTO LEARN UP","AUTO LEARN DOWN","REBOOTING"};
 
   #define MAX_SAMPLES 5
       const int capacity = (MAX_SAMPLES);

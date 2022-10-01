@@ -58,7 +58,7 @@ extern "C"
 
 
 #define SKN_MOD_NAME "Garage Door Position Monitor"
-#define SKN_MOD_VERSION "2.0.0"
+#define SKN_MOD_VERSION "2.0.1"
 #define SKN_MOD_BRAND "SknSensors"
 
 #define SKN_TITLE "Garage Door Position"
