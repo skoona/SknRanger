@@ -58,7 +58,7 @@ extern "C"
 
 
 #define SKN_MOD_NAME "Garage Door Position Monitor"
-#define SKN_MOD_VERSION "2.0.1"
+#define SKN_MOD_VERSION "2.1.0"
 #define SKN_MOD_BRAND "SknSensors"
 
 #define SKN_TITLE "Garage Door Position"
@@ -83,6 +83,11 @@ SknLoxRanger nodePos(SKN_ID, SKN_TITLE, SKN_TYPE, LOX_TIMING_BUDGET_US, LOX_INTE
  * look for events that block sending property info */
 void onHomieEvent(const HomieEvent& event) {
   switch (event.type) {
+    case HomieEventType::WIFI_DISCONNECTED:
+      if(gbEnableDoorOperations) {
+        ESP.restart();
+      }
+      break;
     case HomieEventType::MQTT_READY:
       Serial << "MQTT connected" << endl;
       gbEnableDoorOperations=true;
@@ -90,6 +95,9 @@ void onHomieEvent(const HomieEvent& event) {
       break;
     case HomieEventType::MQTT_DISCONNECTED:
       Serial << "MQTT disconnected, reason: " << (int8_t)event.mqttReason << endl;
+      if(gbEnableDoorOperations) {
+        ESP.restart();
+      }
       gbEnableDoorOperations=false;
       nodePos.stop();
       break;
@@ -115,14 +123,6 @@ void onHomieEvent(const HomieEvent& event) {
 }
 
 /*
- * Callback for Homie Broadcasts */
-bool broadcastHandler(const String &level, const String &value)
-{
-  Homie.getLogger() << "Received broadcast level " << level << ": " << value << endl;
-  return true;
-}
-
-/*
  * Arduino Setup: Initialze Homie */
 void setup()
 {
@@ -140,8 +140,7 @@ void setup()
   Homie_setFirmware(SKN_MOD_NAME, SKN_MOD_VERSION);
   Homie_setBrand(SKN_MOD_BRAND);
   
-  Homie.setBroadcastHandler(broadcastHandler)
-      .setLedPin(LED_BUILTIN, LOW)
+  Homie.setLedPin(LED_BUILTIN, LOW)
       .disableResetTrigger()
       .onEvent(onHomieEvent);
 
